@@ -40,32 +40,36 @@ public class CustomerServiceImpl implements CustomerService {
 	public TripBooking bookTrip(int customerId, String fromLocation, String toLocation, int distanceInKm) throws Exception{
 		//Book the driver with lowest driverId who is free (cab available variable is Boolean.TRUE). If no driver is available, throw "No cab available!" exception
 		//Avoid using SQL query
-		Customer customer = customerRepository2.findById(customerId).get();
+		Driver driver = null;
 		TripBooking bookTrip = new TripBooking();
-		try{
-			List<Driver> driverList = driverRepository2.findAll();
-			for (Driver d: driverList) {
-				if(d.getCab().getAvailable()) {
-					bookTrip.setCustomer(customer);
-					bookTrip.setDriver(d);
-					bookTrip.setFromLocation(fromLocation);
-					bookTrip.setToLocation(toLocation);
-					bookTrip.setDistanceInKm(distanceInKm);
-					bookTrip.setStatus(TripStatus.CONFIRMED);
-
-					//?adding bookingList to driver's booking list
-					d.getTripBookingList().add(bookTrip);
-					d.getCab().setAvailable(false);
-					driverRepository2.save(d);
+		List<Driver> driverList = driverRepository2.findAll();
+		for (Driver d : driverList) {
+			if (d.getCab().getAvailable()) {
+				if ((driver == null) || (driver.getDriverId() > d.getDriverId())) {
+					driver = d;
 				}
 			}
-			customer.getTripBookingList().add(bookTrip);
-			customerRepository2.save(customer);
-			return bookTrip;
 		}
-		catch (Exception e) {
+		if(driver == null) {
 			throw new Exception("No cab available!");
 		}
+		Customer customer = customerRepository2.findById(customerId).get();
+
+		bookTrip.setCustomer(customer);
+		bookTrip.setDriver(driver);
+		driver.getCab().setAvailable(Boolean.FALSE);
+		bookTrip.setFromLocation(fromLocation);
+		bookTrip.setToLocation(toLocation);
+		bookTrip.setDistanceInKm(distanceInKm);
+		bookTrip.setStatus(TripStatus.CONFIRMED);
+
+		customer.getTripBookingList().add(bookTrip);
+		customerRepository2.save(customer); //saving the parent.
+
+		driver.getTripBookingList().add(bookTrip);
+		driverRepository2.save(driver);
+
+		return bookTrip;
 	}
 
 	@Override
